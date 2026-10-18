@@ -64,6 +64,16 @@ def test_api_auth_and_limits(monkeypatch):
     assert c.post("/api/generate", json=body, headers=h).status_code == 429  # общий лимит
 
 
+def test_demo_deck_is_public_and_complete(monkeypatch):
+    c = make_client(monkeypatch)
+    r = c.get("/demo.json")  # без X-API-Key
+    d = r.json()
+    assert r.status_code == 200 and d["demo"] is True
+    assert d["count"] == len(d["cards"]) >= 10
+    assert all(card["translation_ru"] and card["definition_en"] for card in d["cards"])
+    zipfile.ZipFile(io.BytesIO(__import__("base64").b64decode(d["apkg_base64"]))).testzip()
+
+
 def test_index_page_served(monkeypatch):
     c = make_client(monkeypatch)
     r = c.get("/")
