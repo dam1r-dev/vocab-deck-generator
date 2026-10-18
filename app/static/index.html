@@ -4,32 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Генератор колод</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Pacifico&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d2433; --muted:#667085; --line:#e4e1d8; --accent:#1f6f5c; --accent-ink:#fff; --err:#b42318; }
+  :root { --bg:#fff4f8; --card:#ffffff; --ink:#4a2433; --muted:#a8707f; --line:#f9d3e1; --accent:#ff6fa5; --accent2:#ff9ec4;
+          --accent-ink:#ffffff; --err:#d6336c; --soft:#ffe6ef; --shadow:rgba(255,111,165,.22); --mint:#38b58d; --coral:#ff6b6b; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#14181f; --card:#1c222c; --ink:#eef1f6; --muted:#9aa4b5; --line:#2c3441; --accent:#4cc3a3; --accent-ink:#0b1713; --err:#ff8a80; }
+    :root { --bg:#2a1520; --card:#3a1d2b; --ink:#ffe8f0; --muted:#e0a9bf; --line:#6a3550; --accent:#ff8fbd; --accent2:#ffb3d1;
+            --accent-ink:#3a0f22; --err:#ff9db8; --soft:#4a2438; --shadow:rgba(0,0,0,.35); --mint:#5fd3a8; --coral:#ff8f8f; }
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { margin:0; color:var(--ink); font:16px/1.5 "Nunito",ui-rounded,"Segoe UI",system-ui,sans-serif;
+         background-color:var(--bg);
+         background-image:radial-gradient(var(--line) 1.6px, transparent 1.7px); background-size:26px 26px; }
   main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
-  h1 { font-size:26px; margin:0 0 4px; }
-  p.sub { color:var(--muted); margin:0 0 24px; }
-  form, .result { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
-  label { display:block; font-size:14px; color:var(--muted); margin:14px 0 6px; }
+  h1 { font:400 clamp(30px,6vw,40px)/1.2 "Pacifico","Nunito",cursive; color:var(--accent); margin:0 0 6px; text-shadow:0 2px 0 var(--soft); }
+  h1::after { content:" ♡"; font-size:.7em; }
+  p.sub { color:var(--muted); margin:0 0 24px; font-weight:600; }
+  form, .result { background:var(--card); border:2px solid var(--line); border-radius:26px; padding:22px;
+                  box-shadow:0 10px 30px var(--shadow); }
+  label { display:block; font-size:14px; font-weight:700; color:var(--muted); margin:14px 0 6px; }
   label:first-child { margin-top:0; }
-  input, select { width:100%; padding:11px 12px; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:9px; }
-  input:focus, select:focus, button:focus-visible, a.dl:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  input, select { width:100%; padding:12px 16px; font:inherit; color:var(--ink); background:var(--bg); border:2px solid var(--line); border-radius:16px; }
+  input::placeholder { color:var(--muted); opacity:.7; }
+  input:focus, select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px var(--shadow); }
+  button:focus-visible, a.dl:focus-visible { outline:3px solid var(--accent); outline-offset:3px; }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  button { margin-top:18px; width:100%; padding:12px; font:inherit; font-weight:600; color:var(--accent-ink); background:var(--accent); border:0; border-radius:9px; cursor:pointer; }
+  button { margin-top:18px; width:100%; padding:13px; font:inherit; font-weight:800; color:var(--accent-ink);
+           background:linear-gradient(135deg,var(--accent2),var(--accent)); border:0; border-radius:999px; cursor:pointer;
+           box-shadow:0 6px 16px var(--shadow); transition:transform .15s, box-shadow .15s; }
+  button:hover:not([disabled]) { transform:translateY(-2px); box-shadow:0 10px 22px var(--shadow); }
+  button:active:not([disabled]) { transform:translateY(0); }
   button[disabled] { opacity:.6; cursor:wait; }
-  button.demo { margin-top:10px; background:transparent; color:var(--accent); border:1.5px solid var(--accent); }
-  #status { margin:16px 0 0; min-height:1.4em; color:var(--muted); }
+  button.demo { margin-top:10px; background:transparent; color:var(--accent); border:2px solid var(--accent); box-shadow:none; }
+  #status { margin:16px 0 0; min-height:1.4em; color:var(--muted); font-weight:600; }
   #status.err { color:var(--err); }
-  .result { margin-top:20px; }
-  .result h2 { font-size:18px; margin:0 0 12px; }
+  .result { margin-top:22px; }
+  .result h2 { font:400 22px/1.3 "Pacifico","Nunito",cursive; color:var(--accent); margin:0 0 14px; }
   .downloads { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-  a.dl { padding:8px 12px; border:1px solid var(--line); border-radius:8px; color:var(--ink); text-decoration:none; font-size:14px; }
-  a.dl.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  a.dl { padding:8px 16px; border:2px solid var(--line); border-radius:999px; color:var(--ink); text-decoration:none; font-size:14px; font-weight:700; background:var(--card); }
+  a.dl:hover { border-color:var(--accent); }
+  a.dl.primary { background:linear-gradient(135deg,var(--accent2),var(--accent)); color:var(--accent-ink); border-color:transparent; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   th, td { text-align:left; padding:8px 6px; border-top:1px solid var(--line); vertical-align:top; }
   th { color:var(--muted); font-weight:500; border-top:0; }
@@ -60,14 +76,15 @@
 
   /* --- Режим изучения карточек --- */
   .study-btn { margin:0 0 14px; }
-  #study { position:fixed; inset:0; z-index:15; background:var(--bg); display:none; flex-direction:column; align-items:center;
+  #study { position:fixed; inset:0; z-index:15; background-color:var(--bg);
+           background-image:radial-gradient(var(--line) 1.6px, transparent 1.7px); background-size:26px 26px; display:none; flex-direction:column; align-items:center;
            padding:16px 16px 20px; overflow:hidden; }
   #study.open { display:flex; }
   .study-top { width:100%; max-width:520px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
   #progress { font-weight:600; }
-  .bar { flex:1; height:6px; border-radius:99px; background:var(--line); overflow:hidden; }
-  .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .3s; }
-  .ghost { margin:0; width:auto; padding:8px 14px; background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:500; }
+  .bar { flex:1; height:10px; border-radius:99px; background:var(--soft); border:2px solid var(--line); overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent2),var(--accent)); border-radius:99px; transition:width .3s; }
+  .ghost { margin:0; width:auto; padding:8px 16px; background:var(--card); color:var(--ink); border:2px solid var(--line); font-weight:700; box-shadow:none; }
   .deck { position:relative; flex:1; width:100%; max-width:520px; display:grid; place-items:center; min-height:0; }
   .scard { position:absolute; width:min(88vw,380px); height:min(62vh,500px); touch-action:none; user-select:none; -webkit-user-select:none;
            transition:transform .28s ease, opacity .28s; will-change:transform; cursor:grab; }
@@ -77,25 +94,27 @@
   .sflip { position:absolute; inset:0; transform-style:preserve-3d; transition:transform .45s cubic-bezier(.3,.7,.2,1); }
   .scard.flipped .sflip { transform:rotateY(180deg); }
   .sface { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; background:var(--card);
-           border:1px solid var(--line); border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.18); padding:26px 22px;
+           border:3px solid var(--line); border-radius:30px; box-shadow:0 14px 34px var(--shadow); padding:26px 22px;
            display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; overflow:auto; }
   .sface.sback { transform:rotateY(180deg); }
-  .sword { font-size:clamp(28px,8vw,40px); font-weight:700; line-height:1.15; overflow-wrap:anywhere; }
+  .sface.sfront::before { content:"♡"; position:absolute; top:14px; left:18px; font-size:22px; color:var(--accent2); }
+  .sface.sfront::after { content:"✦"; position:absolute; bottom:40px; right:22px; font-size:18px; color:var(--accent2); opacity:.7; }
+  .sword { font-size:clamp(28px,8vw,40px); font-weight:800; line-height:1.15; overflow-wrap:anywhere; color:var(--ink); }
   .spos { color:var(--muted); font-style:italic; }
-  .strans { font-size:clamp(26px,7vw,36px); font-weight:700; color:var(--accent); overflow-wrap:anywhere; }
+  .strans { font-size:clamp(26px,7vw,36px); font-weight:800; color:var(--accent); overflow-wrap:anywhere; }
   .sdef { font-size:16px; }
   .sex { font-size:15px; color:var(--muted); font-style:italic; }
   .shint { position:absolute; bottom:14px; font-size:12px; color:var(--muted); }
-  .speak { position:absolute; top:12px; right:12px; margin:0; width:40px; height:40px; padding:0; border-radius:50%;
-           background:transparent; color:var(--ink); border:1px solid var(--line); font-size:18px; }
+  .speak { position:absolute; top:12px; right:12px; margin:0; width:42px; height:42px; padding:0; border-radius:50%;
+           background:var(--soft); color:var(--ink); border:2px solid var(--line); font-size:18px; box-shadow:none; }
   .stamp { position:absolute; top:22px; padding:6px 14px; border:3px solid; border-radius:10px; font-weight:800; font-size:22px;
            letter-spacing:1px; opacity:0; pointer-events:none; z-index:2; }
-  .stamp.yes { left:20px; color:#1a9a62; transform:rotate(-12deg); }
-  .stamp.no { right:20px; color:#d4402f; transform:rotate(12deg); }
+  .stamp.yes { left:20px; color:var(--mint); transform:rotate(-12deg); }
+  .stamp.no { right:20px; color:var(--coral); transform:rotate(12deg); }
   .study-actions { display:flex; gap:12px; width:100%; max-width:380px; }
   .study-actions button { margin:0; }
-  .btn-no { background:transparent; color:#d4402f; border:2px solid #d4402f; }
-  .btn-yes { background:#1a9a62; color:#fff; }
+  .btn-no { background:var(--card); color:var(--coral); border:2px solid var(--coral); box-shadow:none; }
+  .btn-yes { background:linear-gradient(135deg,#7fe0bd,var(--mint)); color:#06382a; }
   .study-hint { margin:10px 0 0; font-size:13px; color:var(--muted); text-align:center; max-width:380px; }
   .summary { text-align:center; display:grid; gap:10px; justify-items:center; }
   .summary h3 { margin:0; font-size:26px; }
@@ -114,7 +133,7 @@
   <header>
     <div>
       <h1>Колода слов из статьи</h1>
-      <p class="sub">Вставь ссылку на англоязычную статью. Получишь слова B2/C1 для Anki и Quizlet.</p>
+      <p class="sub">Вставь ссылку на статью, и я соберу милые карточки B2/C1 ✨</p>
     </div>
     <button class="ace-btn" id="ace" type="button" aria-label="Туз пик">
       <svg viewBox="0 0 70 98" aria-hidden="true">
@@ -173,8 +192,9 @@
                 <path d="M0 8L8 0L16 8L8 16Z" fill="none" stroke="#fff" stroke-opacity=".35"/>
               </pattern>
             </defs>
-            <rect width="250" height="350" fill="#1f6f5c"/>
-            <rect x="14" y="14" width="222" height="322" rx="8" fill="url(#bk)" stroke="#fff" stroke-opacity=".6"/>
+            <rect width="250" height="350" fill="#ff7fb2"/>
+            <rect x="14" y="14" width="222" height="322" rx="14" fill="url(#bk)" stroke="#fff" stroke-opacity=".8" stroke-width="2"/>
+            <text x="125" y="188" text-anchor="middle" font-size="64" fill="#fff" fill-opacity=".9">♡</text>
           </svg>
         </div>
       </div>
