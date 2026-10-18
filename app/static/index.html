@@ -34,13 +34,35 @@
   th { color:var(--muted); font-weight:500; border-top:0; }
   td.w { font-weight:600; white-space:nowrap; }
   .hidden { display:none; }
+  header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .ace { flex:none; width:44px; height:62px; padding:0; margin:0; border:1px solid var(--line); border-radius:7px;
+         background:#fff; color:#111; font:700 17px/1 Georgia,serif; cursor:pointer; position:relative;
+         transform:rotate(6deg); transition:transform .25s; }
+  .ace:hover { transform:rotate(-2deg) translateY(-3px); }
+  .ace small { position:absolute; top:5px; left:6px; display:block; text-align:left; line-height:1.05; }
+  .ace span { position:absolute; inset:0; display:grid; place-items:center; font-size:26px; }
+  .ace.flip { animation:flip .7s; }
+  @keyframes flip { 50% { transform:rotateY(90deg) scale(1.1); } }
+  #egg { position:fixed; left:50%; bottom:28px; transform:translate(-50%,20px); max-width:min(92vw,420px); opacity:0;
+         pointer-events:none; background:var(--ink); color:var(--bg); padding:14px 18px; border-radius:12px;
+         font-size:15px; transition:.3s; z-index:10; }
+  #egg.show { opacity:1; transform:translate(-50%,0); }
+  .suit { position:fixed; top:-30px; font-size:26px; pointer-events:none; z-index:9; animation:fall 2.2s ease-in forwards; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(360deg); opacity:.2; } }
+  @media (prefers-reduced-motion: reduce) { .suit { display:none; } .ace, .ace.flip { animation:none; transition:none; } }
   @media (max-width:520px) { .row { grid-template-columns:1fr; } th:nth-child(3), td:nth-child(3) { display:none; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>Колода слов из статьи</h1>
-  <p class="sub">Вставь ссылку на англоязычную статью. Получишь слова B2/C1 для Anki и Quizlet.</p>
+  <header>
+    <div>
+      <h1>Колода слов из статьи</h1>
+      <p class="sub">Вставь ссылку на англоязычную статью. Получишь слова B2/C1 для Anki и Quizlet.</p>
+    </div>
+    <button class="ace" id="ace" type="button" aria-label="Туз пик"><small>A<br>♠</small><span>♠</span></button>
+  </header>
+  <div id="egg" role="status" aria-live="polite"></div>
 
   <form id="form">
     <label for="url">Ссылка</label>
@@ -96,6 +118,43 @@ function setStatus(text, isErr = false) {
   $("status").textContent = text;
   $("status").className = isErr ? "err" : "";
 }
+
+// Пасхалка: клик по тузу или набор "ace"
+const EGGS = [
+  "ace (verb) — сдать на отлично: «She aced the exam.»",
+  "ace (noun) — мастер своего дела: «He's an ace at grammar.»",
+  "ace up your sleeve — козырь в рукаве. Хорошая идиома для B2!",
+  "play your cards right — разыграть всё умно. Удачной колоды!",
+];
+let eggTimer, eggIdx = 0;
+function ace() {
+  const btn = $("ace");
+  btn.classList.remove("flip"); void btn.offsetWidth; btn.classList.add("flip");
+  const egg = $("egg");
+  egg.textContent = EGGS[eggIdx++ % EGGS.length];
+  egg.classList.add("show");
+  clearTimeout(eggTimer);
+  eggTimer = setTimeout(() => egg.classList.remove("show"), 3800);
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    for (let i = 0; i < 18; i++) {
+      const s = document.createElement("div");
+      s.className = "suit";
+      s.textContent = "♠♥♦♣"[i % 4];
+      s.style.left = Math.random() * 100 + "vw";
+      s.style.animationDelay = Math.random() * 0.5 + "s";
+      s.style.color = i % 4 === 1 || i % 4 === 2 ? "#d33" : "inherit";
+      document.body.append(s);
+      setTimeout(() => s.remove(), 3000);
+    }
+  }
+}
+$("ace").addEventListener("click", ace);
+let typed = "";
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input, textarea")) return;
+  typed = (typed + e.key.toLowerCase()).slice(-3);
+  if (typed === "ace") ace();
+});
 
 $("form").addEventListener("submit", async (e) => {
   e.preventDefault();
