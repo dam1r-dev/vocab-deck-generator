@@ -11,9 +11,14 @@
   :root { --bg:#fff4f8; --card:#ffffff; --ink:#4a2433; --muted:#a8707f; --line:#f9d3e1; --accent:#ff6fa5; --accent2:#ff9ec4;
           --accent-ink:#ffffff; --err:#d6336c; --soft:#ffe6ef; --shadow:rgba(255,111,165,.22); --mint:#38b58d; --coral:#ff6b6b; }
   @media (prefers-color-scheme: dark) {
-    :root { --bg:#2a1520; --card:#3a1d2b; --ink:#ffe8f0; --muted:#e0a9bf; --line:#6a3550; --accent:#ff8fbd; --accent2:#ffb3d1;
+    :root:not([data-theme="light"]) { --bg:#2a1520; --card:#3a1d2b; --ink:#ffe8f0; --muted:#e0a9bf; --line:#6a3550; --accent:#ff8fbd; --accent2:#ffb3d1;
             --accent-ink:#3a0f22; --err:#ff9db8; --soft:#4a2438; --shadow:rgba(0,0,0,.35); --mint:#5fd3a8; --coral:#ff8f8f; }
   }
+  :root[data-theme="dark"] { --bg:#2a1520; --card:#3a1d2b; --ink:#ffe8f0; --muted:#e0a9bf; --line:#6a3550; --accent:#ff8fbd; --accent2:#ffb3d1;
+            --accent-ink:#3a0f22; --err:#ff9db8; --soft:#4a2438; --shadow:rgba(0,0,0,.35); --mint:#5fd3a8; --coral:#ff8f8f; }
+  .theme-btn { flex:none; margin:0; width:44px; height:44px; padding:0; border-radius:50%; font-size:20px; line-height:1;
+               background:var(--card); color:var(--ink); border:2px solid var(--line); box-shadow:none; }
+  .head-tools { display:flex; gap:12px; align-items:flex-start; }
   * { box-sizing:border-box; }
   body { margin:0; color:var(--ink); font:16px/1.5 "Nunito",ui-rounded,"Segoe UI",system-ui,sans-serif;
          background-color:var(--bg);
@@ -135,6 +140,8 @@
       <h1>Колода слов из статьи</h1>
       <p class="sub">Вставь ссылку на статью, и я соберу милые карточки B2/C1 ✨</p>
     </div>
+    <div class="head-tools">
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Переключить тему" title="Светлая / тёмная тема">🌙</button>
     <button class="ace-btn" id="ace" type="button" aria-label="Туз пик">
       <svg viewBox="0 0 70 98" aria-hidden="true">
         <rect x="1" y="1" width="68" height="96" rx="7" fill="#fff" stroke="#d6d3c9"/>
@@ -147,6 +154,7 @@
         </g>
       </svg>
     </button>
+    </div>
   </header>
 
   <section id="study" role="dialog" aria-modal="true" aria-label="Учим карточки">
@@ -238,6 +246,27 @@ const keyStore = {
   set(v) { try { localStorage.setItem("deckKey", v); } catch {} },
 };
 $("key").value = keyStore.get();
+
+// Переключатель темы: выбор запоминается, по умолчанию берётся тема системы
+const themeStore = {
+  get() { try { return localStorage.getItem("deckTheme"); } catch { return null; } },
+  set(v) { try { localStorage.setItem("deckTheme", v); } catch {} },
+};
+function currentTheme() {
+  return document.documentElement.dataset.theme ||
+    (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+}
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("themeBtn").textContent = t === "dark" ? "☀️" : "🌙";
+  $("themeBtn").setAttribute("aria-label", t === "dark" ? "Включить светлую тему" : "Включить тёмную тему");
+}
+applyTheme(themeStore.get() || currentTheme());
+$("themeBtn").addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  applyTheme(next);
+  themeStore.set(next);
+});
 if (location.protocol === "file:") {
   setStatus("Страница открыта как файл. Запусти сервер и открой http://localhost:8000", true);
 }
