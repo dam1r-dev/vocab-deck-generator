@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Генератор колод</title>
+<style>
+  :root { --bg:#f6f5f1; --card:#fff; --ink:#1d2433; --muted:#667085; --line:#e4e1d8; --accent:#1f6f5c; --accent-ink:#fff; --err:#b42318; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181f; --card:#1c222c; --ink:#eef1f6; --muted:#9aa4b5; --line:#2c3441; --accent:#4cc3a3; --accent-ink:#0b1713; --err:#ff8a80; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:32px 16px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  p.sub { color:var(--muted); margin:0 0 24px; }
+  form, .result { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; }
+  label { display:block; font-size:14px; color:var(--muted); margin:14px 0 6px; }
+  label:first-child { margin-top:0; }
+  input, select { width:100%; padding:11px 12px; font:inherit; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:9px; }
+  input:focus, select:focus, button:focus-visible, a.dl:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  button { margin-top:18px; width:100%; padding:12px; font:inherit; font-weight:600; color:var(--accent-ink); background:var(--accent); border:0; border-radius:9px; cursor:pointer; }
+  button[disabled] { opacity:.6; cursor:wait; }
+  #status { margin:16px 0 0; min-height:1.4em; color:var(--muted); }
+  #status.err { color:var(--err); }
+  .result { margin-top:20px; }
+  .result h2 { font-size:18px; margin:0 0 12px; }
+  .downloads { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  a.dl { padding:8px 12px; border:1px solid var(--line); border-radius:8px; color:var(--ink); text-decoration:none; font-size:14px; }
+  a.dl.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-top:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:500; border-top:0; }
+  td.w { font-weight:600; white-space:nowrap; }
+  .hidden { display:none; }
+  @media (max-width:520px) { .row { grid-template-columns:1fr; } th:nth-child(3), td:nth-child(3) { display:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Колода слов из статьи</h1>
+  <p class="sub">Вставь ссылку на англоязычную статью. Получишь слова B2/C1 для Anki и Quizlet.</p>
+
+  <form id="form">
+    <label for="url">Ссылка</label>
+    <input id="url" type="url" required placeholder="https://..." autocomplete="off">
+    <div class="row">
+      <div>
+        <label for="count">Слов в колоде</label>
+        <input id="count" type="number" min="5" max="30" value="15">
+      </div>
+      <div>
+        <label for="key">Код доступа</label>
+        <input id="key" type="password" required autocomplete="current-password">
+      </div>
+    </div>
+    <button id="go" type="submit">Создать колоду</button>
+    <p id="status" role="status" aria-live="polite"></p>
+  </form>
+
+  <section id="result" class="result hidden">
+    <h2 id="title"></h2>
+    <div class="downloads" id="downloads"></div>
+    <table>
+      <thead><tr><th>Слово</th><th>Значение</th><th>Перевод</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const keyStore = {
+  get() { try { return localStorage.getItem("deckKey") || ""; } catch { return ""; } },
+  set(v) { try { localStorage.setItem("deckKey", v); } catch {} },
+};
+$("key").value = keyStore.get();
+
+function download(name, data, type) {
+  const a = document.createElement("a");
+  a.className = "dl";
+  a.textContent = name;
+  a.download = name;
+  a.href = URL.createObjectURL(new Blob([data], { type }));
+  return a;
+}
+function b64ToBytes(b64) {
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function setStatus(text, isErr = false) {
+  $("status").textContent = text;
+  $("status").className = isErr ? "err" : "";
+}
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("go").disabled = true;
+  $("result").classList.add("hidden");
+  setStatus("Читаю материал и подбираю слова… это займёт до минуты.");
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-API-Key": $("key").value },
+      body: JSON.stringify({ url: $("url").value, count: Number($("count").value) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Ошибка запроса (" + res.status + ")");
+    keyStore.set($("key").value);
+
+    $("title").textContent = data.title + " · " + data.count + " карточек";
+    const box = $("downloads");
+    box.replaceChildren();
+    const apkg = download("deck.apkg", b64ToBytes(data.apkg_base64), "application/octet-stream");
+    apkg.classList.add("primary");
+    box.append(
+      apkg,
+      download("anki.txt", data.anki_csv, "text/plain;charset=utf-8"),
+      download("quizlet.txt", data.quizlet_txt, "text/plain;charset=utf-8"),
+      download("cards.csv", data.full_csv, "text/csv;charset=utf-8"),
+    );
+    const tbody = $("rows");
+    tbody.replaceChildren();
+    for (const c of data.cards) {
+      const tr = document.createElement("tr");
+      for (const [text, cls] of [[c.word, "w"], [c.definition_en, ""], [c.translation_ru, ""]]) {
+        const td = document.createElement("td");
+        td.textContent = text;
+        if (cls) td.className = cls;
+        tr.append(td);
+      }
+      tbody.append(tr);
+    }
+    $("result").classList.remove("hidden");
+    setStatus("");
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    $("go").disabled = false;
+  }
+});
+</script>
+</body>
+</html>
