@@ -75,6 +75,9 @@ const keyStore = {
   set(v) { try { localStorage.setItem("deckKey", v); } catch {} },
 };
 $("key").value = keyStore.get();
+if (location.protocol === "file:") {
+  setStatus("Страница открыта как файл. Запусти сервер и открой http://localhost:8000", true);
+}
 
 function download(name, data, type) {
   const a = document.createElement("a");
