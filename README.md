@@ -14,6 +14,7 @@ Built for English teachers who spend an hour a week hand-picking vocabulary from
 ## Features
 
 - **Article to deck.** Extracts the main text of a page (no menus, ads or comments) and asks an LLM for words that are genuinely B2/C1, not "figure out" or "take action".
+- **One-click demo.** The "Try the demo" button loads a pre-generated deck (`app/static/demo.json`) with no access code and no LLM call, so visitors can try the study mode even when the free hosting is asleep.
 - **Study mode in the browser.** Physical-feeling flashcards: tap to flip and see the Russian translation, swipe right for "know", left for "don't know". Progress bar, repeat-the-unknown rounds, keyboard shortcuts, text-to-speech for the English word.
 - **Exports.** Anki `.apkg` (double-click to import), Anki CSV, Quizlet import text, and a full CSV with every field.
 - **Three front doors, one engine.** Telegram bot, web form, and a JSON API that a Make.com scenario calls.

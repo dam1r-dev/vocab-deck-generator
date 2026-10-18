@@ -49,6 +49,12 @@ def index():
     return FileResponse(STATIC / "index.html")
 
 
+@app.get("/demo.json")
+def demo():
+    """Готовая демо-колода: без кода доступа и без запросов к ИИ."""
+    return FileResponse(STATIC / "demo.json", media_type="application/json")
+
+
 @app.get("/api/health")
 def health():
     return {"ok": True}
