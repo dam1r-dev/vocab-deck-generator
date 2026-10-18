@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     service_api_key: str = ""
     telegram_bot_token: str = ""
     telegram_allowed_ids: str = ""
+    telegram_webhook: bool = False  # true на сервере: бот принимает сообщения через webhook
+    public_url: str = ""  # адрес сервиса; на Render берётся из RENDER_EXTERNAL_URL
+    render_external_url: str = ""
 
     api_rate_limit_per_hour: int = 60
     bot_rate_limit_per_hour: int = 10

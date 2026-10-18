@@ -16,3 +16,11 @@ services:
         sync: false
       - key: SERVICE_API_KEY
         generateValue: true
+      # Telegram-бот работает прямо в этом сервисе (webhook), ноутбук не нужен.
+      # Если вместо этого используешь Make.com, поставь TELEGRAM_WEBHOOK=false.
+      - key: TELEGRAM_WEBHOOK
+        value: "true"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ALLOWED_IDS
+        sync: false
