@@ -1,18 +1,30 @@
 import base64
 import hmac
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, HttpUrl
 
+from . import tg
 from .config import settings
 from .extractor import ExtractionError
 from .llm import Card, LLMError
 from .pipeline import build_deck
 from .ratelimit import RateLimiter
 
-app = FastAPI(title="Vocab Deck Generator")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """На сервере (TELEGRAM_WEBHOOK=true) сам сообщает Telegram, куда присылать сообщения."""
+    base = settings.public_url or settings.render_external_url
+    if settings.telegram_webhook and settings.telegram_bot_token and base:
+        threading.Thread(target=tg.register_webhook, args=(base,), daemon=True).start()
+    yield
+
+
+app = FastAPI(title="Vocab Deck Generator", lifespan=lifespan)
 STATIC = Path(__file__).parent / "static"
 limiter = RateLimiter(limit=settings.api_rate_limit_per_hour, window_sec=3600)
 auth_fail_limiter = RateLimiter(limit=10, window_sec=600)  # подбор ключа: 10 ошибок / 10 минут с одного IP
@@ -53,6 +65,23 @@ def index():
 def demo():
     """Готовая демо-колода: без кода доступа и без запросов к ИИ."""
     return FileResponse(STATIC / "demo.json", media_type="application/json")
+
+
+@app.post("/telegram/webhook")
+def telegram_webhook(
+    update: dict,
+    background: BackgroundTasks,
+    x_telegram_bot_api_secret_token: str = Header(default=""),
+):
+    """Сюда Telegram присылает сообщения. Отвечаем сразу, а колоду собираем в фоне (это ~20 секунд)."""
+    if not (settings.telegram_webhook and settings.telegram_bot_token):
+        raise HTTPException(404)
+    if not hmac.compare_digest(x_telegram_bot_api_secret_token, tg.webhook_secret()):
+        raise HTTPException(403)
+    msg = update.get("message")
+    if msg and "from" in msg and tg.mark_new_update(update.get("update_id")):
+        background.add_task(tg.safe_handle, msg)
+    return {"ok": True}
 
 
 @app.get("/api/health")

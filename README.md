@@ -82,6 +82,16 @@ python -m pytest
 | `SERVICE_API_KEY` | Access code for the web page and the API |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_IDS` | Bot token from @BotFather and the allowed teacher ids |
 
+## Running the bot without your laptop
+
+Two ways, pick one (Telegram delivers messages to a single receiver):
+
+- **Webhook inside the service (default on Render).** With `TELEGRAM_WEBHOOK=true` the service registers `POST /telegram/webhook` with Telegram on startup (the public URL comes from Render's `RENDER_EXTERNAL_URL`). Requests are authenticated with Telegram's secret-token header, derived from the bot token. The reply is sent in a background task, and duplicate deliveries are ignored.
+- **Make.com scenario.** Set `TELEGRAM_WEBHOOK=false` and let Make receive the messages and call `POST /api/generate`.
+
+`python bot.py` is a local polling mode for development; stop it before enabling the webhook.
+On the free Render tier the first message after a quiet period can take about a minute; a free uptime pinger on `/api/health` keeps the service awake.
+
 Deployment (`Dockerfile`, `render.yaml`) and the Make.com scenario steps are described in [README.ru.md](README.ru.md).
 
 ## License

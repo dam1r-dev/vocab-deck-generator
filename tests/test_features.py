@@ -74,6 +74,40 @@ def test_demo_deck_is_public_and_complete(monkeypatch):
     zipfile.ZipFile(io.BytesIO(__import__("base64").b64decode(d["apkg_base64"]))).testzip()
 
 
+def test_telegram_webhook_security_and_dispatch(monkeypatch):
+    from app import tg
+    c = make_client(monkeypatch)
+    handled = []
+    monkeypatch.setattr(tg, "safe_handle", lambda msg: handled.append(msg["text"]))
+    monkeypatch.setattr(main.settings, "telegram_bot_token", "123:abc")
+    secret = tg.webhook_secret()
+    upd = {"update_id": 1, "message": {"text": "hi", "chat": {"id": 5}, "from": {"id": 5}}}
+
+    monkeypatch.setattr(main.settings, "telegram_webhook", False)
+    assert c.post("/telegram/webhook", json=upd, headers={"X-Telegram-Bot-Api-Secret-Token": secret}).status_code == 404
+
+    monkeypatch.setattr(main.settings, "telegram_webhook", True)
+    assert c.post("/telegram/webhook", json=upd).status_code == 403
+    assert c.post("/telegram/webhook", json=upd, headers={"X-Telegram-Bot-Api-Secret-Token": "wrong"}).status_code == 403
+    assert handled == []
+
+    ok = {"X-Telegram-Bot-Api-Secret-Token": secret}
+    assert c.post("/telegram/webhook", json=upd, headers=ok).status_code == 200
+    assert c.post("/telegram/webhook", json=upd, headers=ok).status_code == 200  # повтор доставки
+    assert handled == ["hi"]  # обработано один раз
+
+
+def test_telegram_handle_access_and_help(monkeypatch):
+    from app import tg
+    sent = []
+    monkeypatch.setattr(tg, "send", lambda chat, text: sent.append(text))
+    monkeypatch.setattr(tg.settings, "telegram_allowed_ids", "42")
+    tg.handle({"text": "hello", "chat": {"id": 1}, "from": {"id": 7}})
+    assert "Нет доступа" in sent[-1]
+    tg.handle({"text": "hello", "chat": {"id": 1}, "from": {"id": 42}})
+    assert "Пришли ссылку" in sent[-1]
+
+
 def test_index_page_served(monkeypatch):
     c = make_client(monkeypatch)
     r = c.get("/")
