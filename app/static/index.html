@@ -56,6 +56,51 @@
               padding:8px 16px; width:auto; margin:0; font-weight:500; }
   .suit { position:fixed; top:-30px; font-size:26px; pointer-events:none; z-index:30; animation:fall 2.2s ease-in forwards; }
   @keyframes fall { to { transform:translateY(110vh) rotate(360deg); opacity:.2; } }
+
+  /* --- Режим изучения карточек --- */
+  .study-btn { margin:0 0 14px; }
+  #study { position:fixed; inset:0; z-index:15; background:var(--bg); display:none; flex-direction:column; align-items:center;
+           padding:16px 16px 20px; overflow:hidden; }
+  #study.open { display:flex; }
+  .study-top { width:100%; max-width:520px; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+  #progress { font-weight:600; }
+  .bar { flex:1; height:6px; border-radius:99px; background:var(--line); overflow:hidden; }
+  .bar i { display:block; height:100%; width:0; background:var(--accent); transition:width .3s; }
+  .ghost { margin:0; width:auto; padding:8px 14px; background:transparent; color:var(--ink); border:1px solid var(--line); font-weight:500; }
+  .deck { position:relative; flex:1; width:100%; max-width:520px; display:grid; place-items:center; min-height:0; }
+  .scard { position:absolute; width:min(88vw,380px); height:min(62vh,500px); touch-action:none; user-select:none; -webkit-user-select:none;
+           transition:transform .28s ease, opacity .28s; will-change:transform; cursor:grab; }
+  .scard.drag { transition:none; cursor:grabbing; }
+  .scard.depth1 { transform:translateY(12px) scale(.955); pointer-events:none; }
+  .scard.depth2 { transform:translateY(24px) scale(.91); pointer-events:none; opacity:.8; }
+  .sflip { position:absolute; inset:0; transform-style:preserve-3d; transition:transform .45s cubic-bezier(.3,.7,.2,1); }
+  .scard.flipped .sflip { transform:rotateY(180deg); }
+  .sface { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; background:var(--card);
+           border:1px solid var(--line); border-radius:20px; box-shadow:0 10px 30px rgba(0,0,0,.18); padding:26px 22px;
+           display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:12px; overflow:auto; }
+  .sface.sback { transform:rotateY(180deg); }
+  .sword { font-size:clamp(28px,8vw,40px); font-weight:700; line-height:1.15; overflow-wrap:anywhere; }
+  .spos { color:var(--muted); font-style:italic; }
+  .strans { font-size:clamp(26px,7vw,36px); font-weight:700; color:var(--accent); overflow-wrap:anywhere; }
+  .sdef { font-size:16px; }
+  .sex { font-size:15px; color:var(--muted); font-style:italic; }
+  .shint { position:absolute; bottom:14px; font-size:12px; color:var(--muted); }
+  .speak { position:absolute; top:12px; right:12px; margin:0; width:40px; height:40px; padding:0; border-radius:50%;
+           background:transparent; color:var(--ink); border:1px solid var(--line); font-size:18px; }
+  .stamp { position:absolute; top:22px; padding:6px 14px; border:3px solid; border-radius:10px; font-weight:800; font-size:22px;
+           letter-spacing:1px; opacity:0; pointer-events:none; z-index:2; }
+  .stamp.yes { left:20px; color:#1a9a62; transform:rotate(-12deg); }
+  .stamp.no { right:20px; color:#d4402f; transform:rotate(12deg); }
+  .study-actions { display:flex; gap:12px; width:100%; max-width:380px; }
+  .study-actions button { margin:0; }
+  .btn-no { background:transparent; color:#d4402f; border:2px solid #d4402f; }
+  .btn-yes { background:#1a9a62; color:#fff; }
+  .study-hint { margin:10px 0 0; font-size:13px; color:var(--muted); text-align:center; max-width:380px; }
+  .summary { text-align:center; display:grid; gap:10px; justify-items:center; }
+  .summary h3 { margin:0; font-size:26px; }
+  .summary .nums { color:var(--muted); font-size:18px; }
+  .summary button { margin:0; max-width:300px; }
+  @media (prefers-reduced-motion: reduce) { .scard, .sflip { transition:none; } }
   @media (prefers-reduced-motion: reduce) {
     .suit { display:none; } .ace-btn, .flipper, #overlay { transition:none; }
     .flipper { transform:none; } #overlay.open .flipper { transform:none; }
@@ -83,6 +128,20 @@
       </svg>
     </button>
   </header>
+
+  <section id="study" role="dialog" aria-modal="true" aria-label="Учим карточки">
+    <div class="study-top">
+      <span id="progress" aria-live="polite"></span>
+      <div class="bar"><i id="barfill"></i></div>
+      <button id="studyClose" class="ghost" type="button">Закрыть</button>
+    </div>
+    <div class="deck" id="deck"></div>
+    <div class="study-actions" id="studyActions">
+      <button class="btn-no" id="btnNo" type="button">✕ Не знаю</button>
+      <button class="btn-yes" id="btnYes" type="button">✓ Знаю</button>
+    </div>
+    <p class="study-hint" id="studyHint">Нажми на карточку, чтобы перевернуть. Смахни вправо — знаю, влево — не знаю. Клавиши: ← → и пробел.</p>
+  </section>
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <symbol id="spade" viewBox="0 0 100 100">
@@ -142,6 +201,7 @@
 
   <section id="result" class="result hidden">
     <h2 id="title"></h2>
+    <button id="studyBtn" class="study-btn" type="button">▶ Учить карточки</button>
     <div class="downloads" id="downloads"></div>
     <table>
       <thead><tr><th>Слово</th><th>Значение</th><th>Перевод</th></tr></thead>
@@ -177,6 +237,161 @@ function setStatus(text, isErr = false) {
   $("status").textContent = text;
   $("status").className = isErr ? "err" : "";
 }
+
+// ---------- Режим изучения карточек ----------
+let lastCards = [];
+const study = { all: [], queue: [], known: 0, unknown: [], total: 0, busy: false };
+const SWIPE = 100;
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+function buildCard(c, depth) {
+  const card = el("div", "scard" + (depth ? " depth" + depth : ""));
+  const flip = el("div", "sflip");
+
+  const front = el("div", "sface sfront");
+  front.append(el("div", "sword", c.word));
+  if (c.part_of_speech) front.append(el("div", "spos", c.part_of_speech));
+  front.append(el("div", "shint", "нажми, чтобы перевернуть"));
+  if ("speechSynthesis" in window) {
+    const sp = el("button", "speak", "🔊");
+    sp.type = "button";
+    sp.setAttribute("aria-label", "Произнести слово");
+    sp.addEventListener("pointerdown", (e) => e.stopPropagation());
+    sp.addEventListener("click", (e) => {
+      e.stopPropagation();
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(c.word);
+      u.lang = "en-US";
+      speechSynthesis.speak(u);
+    });
+    front.append(sp);
+  }
+
+  const back = el("div", "sface sback");
+  back.append(el("div", "strans", c.translation_ru), el("div", "sdef", c.definition_en), el("div", "sex", c.example));
+
+  flip.append(front, back);
+  card.append(flip);
+  if (!depth) {
+    card.append(el("div", "stamp yes", "ЗНАЮ"), el("div", "stamp no", "НЕ ЗНАЮ"));
+  }
+  return card;
+}
+
+function renderDeck() {
+  const deck = $("deck");
+  deck.replaceChildren();
+  const left = study.queue.length;
+  $("progress").textContent = study.total - left + (left ? 1 : 0) + " / " + study.total;
+  $("barfill").style.width = ((study.total - left) / study.total) * 100 + "%";
+  if (!left) return showSummary();
+  $("studyActions").style.display = "";
+  $("studyHint").style.display = "";
+  // нижние карточки добавляем первыми, верхняя последней
+  for (let d = Math.min(2, left - 1); d >= 0; d--) deck.append(buildCard(study.queue[d], d));
+  attachDrag(deck.lastElementChild);
+  study.busy = false;
+}
+
+function flipTop() {
+  const top = $("deck").lastElementChild;
+  if (top && top.classList.contains("scard")) top.classList.toggle("flipped");
+}
+
+function decide(known) {
+  const top = $("deck").lastElementChild;
+  if (study.busy || !top || !top.classList.contains("scard")) return;
+  study.busy = true;
+  top.classList.remove("drag");
+  top.style.transform = `translate(${known ? 140 : -140}vw, 40px) rotate(${known ? 25 : -25}deg)`;
+  top.style.opacity = "0";
+  const card = study.queue.shift();
+  if (known) study.known++; else study.unknown.push(card);
+  setTimeout(renderDeck, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 260);
+}
+
+function attachDrag(card) {
+  if (!card) return;
+  const yes = card.querySelector(".stamp.yes"), no = card.querySelector(".stamp.no");
+  let sx = 0, sy = 0, dx = 0, moved = false, active = false;
+  card.addEventListener("pointerdown", (e) => {
+    if (study.busy) return;
+    active = true; moved = false; sx = e.clientX; sy = e.clientY; dx = 0;
+    card.setPointerCapture(e.pointerId);
+    card.classList.add("drag");
+  });
+  card.addEventListener("pointermove", (e) => {
+    if (!active) return;
+    dx = e.clientX - sx;
+    const dy = e.clientY - sy;
+    if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
+    card.style.transform = `translate(${dx}px, ${dy * 0.3}px) rotate(${dx / 18}deg)`;
+    const k = Math.min(Math.abs(dx) / SWIPE, 1);
+    yes.style.opacity = dx > 0 ? k : 0;
+    no.style.opacity = dx < 0 ? k : 0;
+  });
+  const end = () => {
+    if (!active) return;
+    active = false;
+    card.classList.remove("drag");
+    if (moved && Math.abs(dx) > SWIPE) return decide(dx > 0);
+    card.style.transform = "";
+    yes.style.opacity = no.style.opacity = 0;
+    if (!moved) flipTop();
+  };
+  card.addEventListener("pointerup", end);
+  card.addEventListener("pointercancel", () => {
+    active = false; card.classList.remove("drag"); card.style.transform = ""; yes.style.opacity = no.style.opacity = 0;
+  });
+}
+
+function showSummary() {
+  $("studyActions").style.display = "none";
+  $("studyHint").style.display = "none";
+  const box = el("div", "summary");
+  box.append(el("h3", "", study.unknown.length ? "Раунд завершён" : "Всё знаешь! 🎉"));
+  box.append(el("div", "nums", "Знаю: " + study.known + " · Не знаю: " + study.unknown.length));
+  if (study.unknown.length) {
+    const again = el("button", "", "Повторить незнакомые (" + study.unknown.length + ")");
+    again.type = "button";
+    again.addEventListener("click", () => startStudy(study.unknown));
+    box.append(again);
+  }
+  const all = el("button", "ghost", "Начать заново");
+  all.type = "button";
+  all.addEventListener("click", () => startStudy(study.all));
+  box.append(all);
+  $("deck").append(box);
+  (study.unknown.length ? box.querySelector("button") : all).focus({ preventScroll: true });
+}
+
+function shuffle(a) {
+  a = [...a];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+function startStudy(list) {
+  if (list === lastCards) study.all = lastCards;
+  else if (!study.all.length) study.all = lastCards;
+  study.queue = shuffle(list);
+  study.known = 0; study.unknown = []; study.total = study.queue.length; study.busy = false;
+  $("study").classList.add("open");
+  renderDeck();
+}
+function closeStudy() {
+  $("study").classList.remove("open");
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  $("studyBtn").focus();
+}
+$("studyBtn").addEventListener("click", () => { study.all = lastCards; startStudy(lastCards); });
+$("studyClose").addEventListener("click", closeStudy);
+$("btnYes").addEventListener("click", () => decide(true));
+$("btnNo").addEventListener("click", () => decide(false));
 
 // Пасхалка: клик по тузу или набор "ace"
 const EGGS = [
@@ -217,7 +432,15 @@ $("eggclose").addEventListener("click", closeAce);
 $("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay" || e.target.closest(".flipper")) closeAce(); });
 let typed = "";
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") return closeAce();
+  if ($("overlay").classList.contains("open")) { if (e.key === "Escape") closeAce(); return; }
+  if ($("study").classList.contains("open")) {
+    if (e.key === "Escape") closeStudy();
+    else if (e.key === "ArrowRight") decide(true);
+    else if (e.key === "ArrowLeft") decide(false);
+    else if ((e.key === " " || e.key === "Enter") && !e.target.closest("button")) { e.preventDefault(); flipTop(); }
+    return;
+  }
+  if (e.key === "Escape") return;
   if (e.target.matches("input, textarea")) return;
   typed = (typed + e.key.toLowerCase()).slice(-3);
   if (typed === "ace") ace();
@@ -237,6 +460,7 @@ $("form").addEventListener("submit", async (e) => {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Ошибка запроса (" + res.status + ")");
     keyStore.set($("key").value);
+    lastCards = data.cards;
 
     $("title").textContent = data.title + " · " + data.count + " карточек";
     const box = $("downloads");
