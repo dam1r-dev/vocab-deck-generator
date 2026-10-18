@@ -35,21 +35,31 @@
   td.w { font-weight:600; white-space:nowrap; }
   .hidden { display:none; }
   header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-  .ace { flex:none; width:44px; height:62px; padding:0; margin:0; border:1px solid var(--line); border-radius:7px;
-         background:#fff; color:#111; font:700 17px/1 Georgia,serif; cursor:pointer; position:relative;
-         transform:rotate(6deg); transition:transform .25s; }
-  .ace:hover { transform:rotate(-2deg) translateY(-3px); }
-  .ace small { position:absolute; top:5px; left:6px; display:block; text-align:left; line-height:1.05; }
-  .ace span { position:absolute; inset:0; display:grid; place-items:center; font-size:26px; }
-  .ace.flip { animation:flip .7s; }
-  @keyframes flip { 50% { transform:rotateY(90deg) scale(1.1); } }
-  #egg { position:fixed; left:50%; bottom:28px; transform:translate(-50%,20px); max-width:min(92vw,420px); opacity:0;
-         pointer-events:none; background:var(--ink); color:var(--bg); padding:14px 18px; border-radius:12px;
-         font-size:15px; transition:.3s; z-index:10; }
-  #egg.show { opacity:1; transform:translate(-50%,0); }
-  .suit { position:fixed; top:-30px; font-size:26px; pointer-events:none; z-index:9; animation:fall 2.2s ease-in forwards; }
+  .ace-btn { flex:none; width:46px; height:64px; padding:0; margin:0; border:0; background:none; cursor:pointer;
+             transform:rotate(6deg); transition:transform .25s; }
+  .ace-btn:hover { transform:rotate(-3deg) translateY(-3px); }
+  .ace-btn svg { width:100%; height:100%; display:block; filter:drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+
+  #overlay { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:16px;
+             background:rgba(5,8,12,.72); opacity:0; visibility:hidden; transition:opacity .3s, visibility .3s; }
+  #overlay.open { opacity:1; visibility:visible; }
+  .stage { perspective:1400px; display:grid; justify-items:center; gap:18px; }
+  .flipper { height:min(50vh,460px); aspect-ratio:5/7; position:relative; transform-style:preserve-3d;
+             transform:rotateY(180deg) scale(.8); transition:transform .8s cubic-bezier(.2,.8,.2,1); }
+  #overlay.open .flipper { transform:rotateY(0) scale(1); }
+  .face { position:absolute; inset:0; backface-visibility:hidden; border-radius:4.5% / 3.2%; overflow:hidden;
+          box-shadow:0 24px 60px rgba(0,0,0,.55); }
+  .face svg { width:100%; height:100%; display:block; }
+  .face.back { transform:rotateY(180deg); }
+  #eggtext { color:#fff; font-size:16px; text-align:center; max-width:min(92vw,420px); min-height:3em; }
+  #eggclose { color:#fff; background:transparent; border:1px solid rgba(255,255,255,.4); border-radius:9px;
+              padding:8px 16px; width:auto; margin:0; font-weight:500; }
+  .suit { position:fixed; top:-30px; font-size:26px; pointer-events:none; z-index:30; animation:fall 2.2s ease-in forwards; }
   @keyframes fall { to { transform:translateY(110vh) rotate(360deg); opacity:.2; } }
-  @media (prefers-reduced-motion: reduce) { .suit { display:none; } .ace, .ace.flip { animation:none; transition:none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .suit { display:none; } .ace-btn, .flipper, #overlay { transition:none; }
+    .flipper { transform:none; } #overlay.open .flipper { transform:none; }
+  }
   @media (max-width:520px) { .row { grid-template-columns:1fr; } th:nth-child(3), td:nth-child(3) { display:none; } }
 </style>
 </head>
@@ -60,9 +70,58 @@
       <h1>Колода слов из статьи</h1>
       <p class="sub">Вставь ссылку на англоязычную статью. Получишь слова B2/C1 для Anki и Quizlet.</p>
     </div>
-    <button class="ace" id="ace" type="button" aria-label="Туз пик"><small>A<br>♠</small><span>♠</span></button>
+    <button class="ace-btn" id="ace" type="button" aria-label="Туз пик">
+      <svg viewBox="0 0 70 98" aria-hidden="true">
+        <rect x="1" y="1" width="68" height="96" rx="7" fill="#fff" stroke="#d6d3c9"/>
+        <text x="8" y="19" font-family="Georgia,serif" font-weight="700" font-size="16" fill="#111">A</text>
+        <use href="#spade" x="7" y="23" width="12" height="12" fill="#111"/>
+        <use href="#spade" x="17" y="29" width="36" height="36" fill="#111"/>
+        <g transform="rotate(180 35 49)">
+          <text x="8" y="19" font-family="Georgia,serif" font-weight="700" font-size="16" fill="#111">A</text>
+          <use href="#spade" x="7" y="23" width="12" height="12" fill="#111"/>
+        </g>
+      </svg>
+    </button>
   </header>
-  <div id="egg" role="status" aria-live="polite"></div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="spade" viewBox="0 0 100 100">
+      <path d="M50 4C50 4 8 38 8 60c0 15 12 24 25 21 4-1 8-3 11-6-1 9-5 17-13 21h38c-8-4-12-12-13-21 3 3 7 5 11 6 13 3 25-6 25-21C92 38 50 4 50 4z"/>
+    </symbol>
+  </svg>
+
+  <div id="overlay" role="dialog" aria-modal="true" aria-label="Туз пик" aria-hidden="true">
+    <div class="stage">
+      <div class="flipper">
+        <div class="face front">
+          <svg viewBox="0 0 250 350">
+            <rect width="250" height="350" fill="#fff"/>
+            <rect x="3" y="3" width="244" height="344" rx="12" fill="none" stroke="#e2dfd5" stroke-width="2"/>
+            <text x="20" y="52" font-family="Georgia,serif" font-weight="700" font-size="44" fill="#111">A</text>
+            <use href="#spade" x="19" y="62" width="34" height="34" fill="#111"/>
+            <use href="#spade" x="55" y="100" width="140" height="140" fill="#111"/>
+            <g transform="rotate(180 125 175)">
+              <text x="20" y="52" font-family="Georgia,serif" font-weight="700" font-size="44" fill="#111">A</text>
+              <use href="#spade" x="19" y="62" width="34" height="34" fill="#111"/>
+            </g>
+          </svg>
+        </div>
+        <div class="face back">
+          <svg viewBox="0 0 250 350">
+            <defs>
+              <pattern id="bk" width="16" height="16" patternUnits="userSpaceOnUse">
+                <path d="M0 8L8 0L16 8L8 16Z" fill="none" stroke="#fff" stroke-opacity=".35"/>
+              </pattern>
+            </defs>
+            <rect width="250" height="350" fill="#1f6f5c"/>
+            <rect x="14" y="14" width="222" height="322" rx="8" fill="url(#bk)" stroke="#fff" stroke-opacity=".6"/>
+          </svg>
+        </div>
+      </div>
+      <div id="eggtext" role="status" aria-live="polite"></div>
+      <button id="eggclose" type="button">Закрыть</button>
+    </div>
+  </div>
 
   <form id="form">
     <label for="url">Ссылка</label>
@@ -126,15 +185,20 @@ const EGGS = [
   "ace up your sleeve — козырь в рукаве. Хорошая идиома для B2!",
   "play your cards right — разыграть всё умно. Удачной колоды!",
 ];
-let eggTimer, eggIdx = 0;
+let eggIdx = 0;
+function closeAce() {
+  const o = $("overlay");
+  if (!o.classList.contains("open")) return;
+  o.classList.remove("open");
+  o.setAttribute("aria-hidden", "true");
+  $("ace").focus();
+}
 function ace() {
-  const btn = $("ace");
-  btn.classList.remove("flip"); void btn.offsetWidth; btn.classList.add("flip");
-  const egg = $("egg");
-  egg.textContent = EGGS[eggIdx++ % EGGS.length];
-  egg.classList.add("show");
-  clearTimeout(eggTimer);
-  eggTimer = setTimeout(() => egg.classList.remove("show"), 3800);
+  const o = $("overlay");
+  $("eggtext").textContent = EGGS[eggIdx++ % EGGS.length];
+  o.classList.add("open");
+  o.setAttribute("aria-hidden", "false");
+  $("eggclose").focus({ preventScroll: true });
   if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
     for (let i = 0; i < 18; i++) {
       const s = document.createElement("div");
@@ -149,8 +213,11 @@ function ace() {
   }
 }
 $("ace").addEventListener("click", ace);
+$("eggclose").addEventListener("click", closeAce);
+$("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay" || e.target.closest(".flipper")) closeAce(); });
 let typed = "";
 document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") return closeAce();
   if (e.target.matches("input, textarea")) return;
   typed = (typed + e.key.toLowerCase()).slice(-3);
   if (typed === "ace") ace();
