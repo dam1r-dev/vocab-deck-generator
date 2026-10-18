@@ -1,88 +1,88 @@
-# Генератор учебных колод (Make.com + FastAPI + Telegram)
+# Vocab Deck Generator
 
-Учитель отправляет ссылку на англоязычную статью и получает колоду: 15 слов уровня B2/C1 с определением (EN),
-переводом (RU), примером и промптом для картинки. Готовые форматы: **`.apkg`** (Anki, двойной клик), CSV для Anki,
-текст для импорта в Quizlet, полный CSV для Excel.
+Paste a link to any English article and get a ready-to-study flashcard deck of 15 B2/C1 words in about 20 seconds: English definition, Russian translation, an example sentence and an image prompt for every word.
+
+Built for English teachers who spend an hour a week hand-picking vocabulary from articles. Use it from a **Telegram bot**, a **web page**, or an **automation scenario in Make.com**.
+
+*Русская версия документации: [README.ru.md](README.ru.md). Plain-language explanation for non-programmers: [КАК_ЭТО_РАБОТАЕТ.md](КАК_ЭТО_РАБОТАЕТ.md).*
+
+<p align="center">
+  <img src="docs/screenshots/02-result-light.png" width="48%" alt="Generated deck with downloads">
+  <img src="docs/screenshots/05-study-swipe.png" width="48%" alt="Swipe study mode">
+</p>
+
+## Features
+
+- **Article to deck.** Extracts the main text of a page (no menus, ads or comments) and asks an LLM for words that are genuinely B2/C1, not "figure out" or "take action".
+- **Study mode in the browser.** Physical-feeling flashcards: tap to flip and see the Russian translation, swipe right for "know", left for "don't know". Progress bar, repeat-the-unknown rounds, keyboard shortcuts, text-to-speech for the English word.
+- **Exports.** Anki `.apkg` (double-click to import), Anki CSV, Quizlet import text, and a full CSV with every field.
+- **Three front doors, one engine.** Telegram bot, web form, and a JSON API that a Make.com scenario calls.
+- **Light and dark themes, mobile layout, reduced-motion support.** Plus a small easter egg: the ace of spades in the corner.
+
+| | |
+|---|---|
+| ![Home](docs/screenshots/01-home-dark.png) | ![Card back](docs/screenshots/04-study-back.png) |
+| ![Summary](docs/screenshots/06-study-summary.png) | ![Mobile](docs/screenshots/08-mobile-study-back.png) |
+
+## How it works
 
 ```
-Telegram ──► Make.com ──► POST /api/generate (этот сервис) ──► Groq / Gemini / любой OpenAI-совместимый ИИ
-   ▲            │                 │ trafilatura: текст статьи
-   └────────────┴── файлы колоды ◄┘
-Браузер ──► GET /  (веб-форма) ──► тот же /api/generate
+Telegram ──► Make.com ──► POST /api/generate ──► LLM (Groq, OpenAI-compatible)
+Web form ──────────────────────┘      │
+                                      ├─ trafilatura: article text
+                                      └─ genanki: .apkg, plus CSV builders
 ```
 
-Три способа пользоваться, один движок:
-- **Telegram-бот** `bot.py`: работает сам, без Make (быстрый старт).
-- **Make.com**: принимает сообщение из Telegram, вызывает API, возвращает файлы (раздел 3).
-- **Веб-страница** `/`: вставил ссылку и код доступа, скачал файлы.
+1. `app/extractor.py` downloads the page and extracts the article text.
+2. `app/llm.py` prompts the model, validates the JSON with Pydantic, removes duplicates and asks for more words if the model returned too few.
+3. `app/deck.py` builds the Anki package and the text exports.
+4. `app/main.py` exposes everything through FastAPI; `app/static/index.html` is the whole front end (no build step, no framework).
+5. `bot.py` is a standalone Telegram bot that uses the same pipeline.
 
-## 1. Запуск локально
+## Tech stack
+
+Python 3.12, FastAPI, Pydantic, httpx, trafilatura, genanki, vanilla JS/CSS (Pointer Events for swipes, CSS 3D transforms for card flips), Docker, Render, Make.com, Telegram Bot API. 15 automated tests (pytest).
+
+## Engineering notes
+
+Problems met on the way and how they were solved:
+
+- **LLM returns fewer items than requested.** The model kept returning 10 words instead of 15. The service now over-asks, de-duplicates and runs follow-up requests that list the words already chosen, up to a limit.
+- **Word quality.** The first prompt produced B1 words. Rejecting examples inside the prompt and asking for single advanced words and less common collocations fixed it.
+- **Free LLM tiers change.** Gemini models disappeared for new users and a Groq model was retired during development. The provider is therefore pluggable: any OpenAI-compatible endpoint works through environment variables.
+- **SSRF protection.** The service fetches user-supplied URLs, so every address (including each redirect hop) is resolved and rejected if it is not a public IP.
+- **Sites that block bots.** Some sites need a browser User-Agent and others (Wikipedia) a descriptive bot one. The fetcher tries both on a 403.
+- **Abuse limits.** API key with constant-time comparison, a global hourly limit, per-user limits in the bot, and a lockout after repeated wrong keys.
+- **Untrusted article text.** The article is passed to the model as data with an explicit instruction to ignore instructions inside it, and the output is schema-validated before use. All card text is rendered with `textContent`, never `innerHTML`.
+
+## Known limitations
+
+- YouTube transcripts are implemented but YouTube blocks most server and home IPs, so it is effectively unavailable.
+- Paywalled pages and Wikipedia cannot be read.
+- Image prompts are generated but images are not.
+- The free Render tier sleeps; the first request after idle takes about a minute.
+
+## Run it locally
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env
+cp .env.example .env            # then fill in the values below
+uvicorn app.main:app --port 8000   # web page and API on http://localhost:8000
+python bot.py                      # optional: Telegram bot
+python -m pytest
 ```
 
-Заполни `.env`:
-
-| Переменная | Что это |
+| Variable | Meaning |
 |---|---|
-| `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | ИИ. Сейчас Groq (бесплатно, https://console.groq.com/keys): `openai_compatible`, `https://api.groq.com/openai/v1`, `openai/gpt-oss-120b`. Список моделей Groq меняется, актуальный: `GET {LLM_BASE_URL}/models` |
-| `SERVICE_API_KEY` | Код доступа к API и веб-форме. Длинная случайная строка |
-| `TELEGRAM_BOT_TOKEN` | Токен от @BotFather |
-| `TELEGRAM_ALLOWED_IDS` | id учителей через запятую (свой id: @userinfobot). Пусто = бот открыт всем |
+| `LLM_PROVIDER` | `gemini` or `openai_compatible` |
+| `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL` | Any OpenAI-compatible provider, for example Groq (`https://api.groq.com/openai/v1`) |
+| `SERVICE_API_KEY` | Access code for the web page and the API |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_IDS` | Bot token from @BotFather and the allowed teacher ids |
 
-```bash
-python bot.py                      # Telegram-бот
-uvicorn app.main:app --port 8000   # API + веб-форма на http://localhost:8000
-python -m pytest                   # тесты
-```
+Deployment (`Dockerfile`, `render.yaml`) and the Make.com scenario steps are described in [README.ru.md](README.ru.md).
 
-Лимиты (меняются в `.env`): `API_RATE_LIMIT_PER_HOUR=60` запросов в час на весь API,
-`BOT_RATE_LIMIT_PER_HOUR=10` колод в час на одного пользователя бота. 10 неверных кодов доступа за 10 минут с одного IP блокируют подбор.
+## License
 
-## 2. Выложить в интернет (нужно для Make и чтобы бот работал без твоего компьютера)
-
-Подготовлены `Dockerfile` и `render.yaml`. На **Render.com**:
-1. Залей проект в GitHub (файл `.env` не попадёт: он в `.gitignore`).
-2. Render → New → **Blueprint** → выбери репозиторий.
-3. Укажи секрет `LLM_API_KEY`. `SERVICE_API_KEY` Render сгенерирует сам, скопируй его из Environment.
-4. Бесплатный сервис «засыпает», первый запрос идёт 30–60 секунд. В Make ставь таймаут 120 секунд.
-
-Автономный бот `bot.py` на Render free не запустится постоянно (это не веб-сервис). Либо держи его на своём компьютере,
-либо используй Make (раздел 3), который принимает сообщения Telegram сам.
-
-## 3. Сценарий в Make.com
-
-Модулей 6; бесплатного тарифа хватает (~6 операций на колоду, порядка 150 колод в месяц).
-**Важно:** пока работает `bot.py` с тем же токеном, Make не получит сообщения (Telegram отдаёт апдейты одному потребителю). Останови бота перед включением сценария.
-
-1. **Telegram Bot → Watch Updates**. Подключение: токен от BotFather. Работает мгновенно, через webhook.
-2. **Фильтр** после модуля 1: `message.text` *Contains* `http`.
-3. **Text parser → Match pattern**. Pattern `https?://\S+`, Text `{{1.message.text}}`. Результат: `{{3.0}}`.
-4. **HTTP → Make a request**:
-   - URL `https://ТВОЙ-СЕРВИС.onrender.com/api/generate`, Method POST
-   - Headers: `X-API-Key` = значение `SERVICE_API_KEY`
-   - Body type Raw, Content type JSON: `{"url": "{{3.0}}", "count": 15}`
-   - Parse response: **Yes**, Timeout: 120
-5. **Telegram → Send a Text Message**: chat id `{{1.message.chat.id}}`, текст `Готово! «{{4.data.title}}» — {{4.data.count}} карточек`.
-6. **Telegram → Send a Document** (по модулю на файл): File name `anki.txt`, Data `{{4.data.anki_csv}}`; второй `quizlet.txt`, Data `{{4.data.quizlet_txt}}`.
-   Файл `.apkg` приходит как `apkg_base64`. Для Make его нужно декодировать (функция `toBinary({{4.data.apkg_base64}}; "base64")`), в Data выбери этот результат, имя `deck.apkg`.
-
-**Обработка ошибок.** Правый клик на модуль 4 → *Add error handler* → Telegram *Send a Text Message*: `Не получилось: {{4.data.detail}}`. Сервис возвращает понятные причины (платная страница, лимит ИИ и т.д.).
-
-## 4. Как импортировать
-
-- **Anki**: открой `deck.apkg` двойным кликом. Или File → Import → `anki.txt` (разделитель и HTML заданы в самом файле).
-- **Quizlet**: Create → Import → вставить содержимое `quizlet.txt` (между термином и определением Tab).
-- **Excel / Google Таблицы**: `cards.csv`, все поля включая промпты для картинок.
-
-## Ограничения
-
-- Работают статьи, открытые без логина и оплаты. Wikipedia блокирует анонимных ботов (403).
-- **YouTube** в коде есть (`youtube-transcript-api`), но YouTube блокирует запросы с домашних и облачных IP, поэтому на практике не работает. Бот честно сообщает об этом.
-- Картинки не генерируются: промпт попадает в колоду как поле.
-- Бесплатные лимиты ИИ ограничены по запросам и токенам в минуту; сервис сообщает об этом понятным текстом.
-- Статья обрезается до 12 000 символов.
+MIT, see [LICENSE](LICENSE).
